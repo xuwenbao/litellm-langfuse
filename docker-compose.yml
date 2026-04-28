@@ -1,13 +1,15 @@
 # Langfuse v3 + LiteLLM Proxy
 # Images use docker.1ms.run mirror prefix; if pull fails, switch registry or remove prefix per 1ms docs.
 #
-# Start: cp .env.example .env && cp litellm.env.example litellm.env && docker compose up -d
+# Start: cp .env.example .env && cp litellm_config.yaml.example litellm_config.yaml && docker compose up -d
+# Default profiles are configured in .env.example via COMPOSE_PROFILES.
 # Langfuse UI: http://localhost:3000  |  LiteLLM: http://localhost:4000
 name: litellm-langfuse
 
 services:
   litellm:
     image: docker.1ms.run/litellm/litellm:main-v1.83.7-stable
+    profiles: ["app"]
     restart: unless-stopped
     depends_on:
       langfuse-web:
@@ -19,22 +21,18 @@ services:
     command: ["--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0"]
     env_file:
       - .env
-      - litellm.env
     environment:
       LANGFUSE_HOST: http://langfuse-web:3000
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-4de8bb926c70efd4df890d09b9dab004}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-8900cd39b5ee41042160776500d81f573358aab3596699c444ca69b598e60284}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-litellm-change-me}
+      UPSTREAM_OPENAI_API_KEY: ${UPSTREAM_OPENAI_API_KEY:-dummy}
+      DATABASE_URL: ${LITELLM_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/postgres}
 
   langfuse-worker:
     image: docker.1ms.run/langfuse/langfuse-worker:3
+    profiles: ["app"]
     restart: always
-    depends_on: &langfuse-depends-on
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      clickhouse:
-        condition: service_healthy
     ports:
       - "127.0.0.1:3030:3030"
     env_file:
@@ -91,8 +89,8 @@ services:
 
   langfuse-web:
     image: docker.1ms.run/langfuse/langfuse:3
+    profiles: ["app"]
     restart: always
-    depends_on: *langfuse-depends-on
     ports:
       - "3000:3000"
     env_file:
@@ -112,6 +110,7 @@ services:
 
   clickhouse:
     image: docker.1ms.run/clickhouse/clickhouse-server:24
+    profiles: ["local-clickhouse"]
     restart: always
     user: "101:101"
     environment:
@@ -133,6 +132,7 @@ services:
 
   minio:
     image: docker.1ms.run/minio/minio:latest
+    profiles: ["local-minio"]
     restart: always
     entrypoint: ["/bin/sh", "-c"]
     command:
@@ -154,6 +154,7 @@ services:
 
   redis:
     image: docker.1ms.run/redis:7
+    profiles: ["local-redis"]
     restart: always
     environment:
       REDIS_AUTH: ${REDIS_AUTH:-myredissecret}
@@ -170,6 +171,7 @@ services:
 
   postgres:
     image: docker.1ms.run/postgres:17
+    profiles: ["local-postgres"]
     restart: always
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]

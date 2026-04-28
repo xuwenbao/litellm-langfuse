@@ -1,2 +1,4 @@
 .env
 litellm.env
+litellm_config.yaml
+.DS_Store

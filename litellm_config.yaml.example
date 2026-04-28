@@ -1,0 +1,20 @@
+# LiteLLM Proxy 配置。
+# 复制为 litellm_config.yaml 后使用：
+# cp -n litellm_config.yaml.example litellm_config.yaml
+#
+# 通常只需要修改 model_name / model / api_base，以及 .env 中的 UPSTREAM_OPENAI_API_KEY。
+# Langfuse 回调和 master_key 已在下方配置好。
+
+model_list:
+  - model_name: your-model-name
+    litellm_params:
+      model: openai/your-model-name
+      api_base: https://your-openai-compatible-api.example.com/v1
+      api_key: os.environ/UPSTREAM_OPENAI_API_KEY
+
+litellm_settings:
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
